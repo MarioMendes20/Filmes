@@ -91,15 +91,15 @@ app.post('/users', async (req, res) => {
     const client = await connect();
     const db = client.db('api_movies');
     const collection = db.collection('users');
-    const { name, age, email, favourite_movies, review } = req.body;
-    console.log(name, age, email, favourite_movies, review);
+    const { name, age, email, favourite_movies, reviews } = req.body;
+    console.log(name, age, email, favourite_movies, reviews);
 
     const new_user = {
         'name': name,
         'age': age,
         'email': email,
         'favourite_movies': favourite_movies,
-        'review': review
+        'reviews': reviews
     };
 
     const result = await collection.insertOne(new_user);
@@ -181,15 +181,15 @@ app.put('/users/:id', async (req, res) => {
     const client = await connect();
     const db = client.db('api_movies');
     const collection = db.collection('users');
-    const { name, age, email, favourite_movies, review } = req.body;
-    console.log(name, age, email, favourite_movies, review);
+    const { name, age, email, favourite_movies, reviews } = req.body;
+    console.log(name, age, email, favourite_movies, reviews);
 
     const updated_user = {
         'name': name,
         'age': age,
         'email': email,
         'favourite_movies': favourite_movies,
-        'review': review
+        'reviews': reviews
     };
 
     const result = await collection.updateOne({ _id: new ObjectId(req.params.id) }, { $set: updated_user });
@@ -199,6 +199,81 @@ app.put('/users/:id', async (req, res) => {
     }
     else {
         res.status(404).send("User not found");
+    }
+});
+
+app.put('/users/:id/favourite_movies/:movie_id', async (req, res) => {
+    const userId = req.params.id;
+    const movieId = req.params.movie_id;
+
+    const client = await connect();
+    const db = client.db('api_movies');
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+        res.status(404).send("User not found");
+        return;
+    }
+
+    const moviesCollection = db.collection('movies');
+    const movie = await moviesCollection.findOne({ _id: new ObjectId(movieId) });
+
+    if (!movie) {
+        res.status(404).send("Movie not found");
+        return;
+    }
+
+    const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $addToSet: { favourite_movies: movie } }
+    );
+
+    if (result.modifiedCount === 1) {
+        res.status(200).send(result);
+    } else {
+        res.status(500).send("Error on Update");
+    }
+});
+
+app.put('/users/:id/reviews/:movie_id', async (req, res) => {
+    const userId = req.params.id;
+    const movieId = req.params.movie_id;
+    const { rating, comment } = req.body;
+
+    const client = await connect();
+    const db = client.db('api_movies');
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+        res.status(404).send("User not found");
+        return;
+    }
+
+    const moviesCollection = db.collection('movies');
+    const movie = await moviesCollection.findOne({ _id: new ObjectId(movieId) });
+
+    if (!movie) {
+        res.status(404).send("Movie not found");
+        return;
+    }
+
+    const review = {
+        movie: movie,
+        rating: rating,
+        comment: comment
+    };
+
+    const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $push: { reviews: review } }
+    );
+
+    if (result.modifiedCount === 1) {
+        res.status(200).send(result);
+    } else {
+        res.status(500).send("Error on Update");
     }
 });
 
