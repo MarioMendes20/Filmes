@@ -321,4 +321,58 @@ app.delete('/users/:id', async (req, res) => {
     }
 });
 
+app.delete('/users/:id/favourite_movies/:movie_id', async (req, res) => {
+    const userId = req.params.id;
+    const movieId = req.params.movie_id;
+
+    const client = await connect();
+    const db = client.db('api_movies');
+    const usersCollection = db.collection('users');
+
+    const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { favourite_movies: { _id: new ObjectId(movieId) } } }
+    );
+
+    if (result.modifiedCount === 1) {
+        res.status(200).send("Movie removed from favourites");
+    } else {
+        res.status(404).send("Movie not found in favourites");
+    }
+});
+
+app.delete('/users/:id/reviews/:movie_id', async (req, res) => {
+    const userId = req.params.id;
+    const movieId = req.params.movie_id;
+
+    const client = await connect();
+    const db = client.db('api_movies');
+    const usersCollection = db.collection('users');
+
+    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+        res.status(404).send("User not found");
+        return;
+    }
+
+    const reviewIndex = user.reviews.findIndex(review => review.movie._id.toString() === movieId);
+    if (reviewIndex === -1) {
+        res.status(404).send("Review not found");
+        return;
+    }
+
+    user.reviews.splice(reviewIndex, 1);
+
+    const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { reviews: user.reviews } }
+    );
+
+    if (result.modifiedCount === 1) {
+        res.status(200).send("Review deleted");
+    } else {
+        res.status(500).send("Error on Update");
+    }
+});
+
 app.listen(port, () => console.log(`Listening on http://localhost:${port}`));
