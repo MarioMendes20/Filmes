@@ -375,4 +375,25 @@ app.delete('/users/:id/reviews/:movie_id', async (req, res) => {
     }
 });
 
+app.delete('/movies/:id/gender', async (req, res) => {
+    const movieId = req.params.id;
+    const genderName = req.body.gender;
+  
+    const client = await connect();
+    const db = client.db('api_movies');
+    const collection = db.collection('movies');
+  
+    const result = await collection.updateOne(
+      { _id: new ObjectId(movieId) },
+      { $pull: { gender: genderName } }
+    );
+  
+    if (result.modifiedCount === 1) {
+      res.status(200).send("Gender removed from movie");
+    } else {
+      res.status(404).send("Gender or movie not found");
+    }
+  });
+  
+
 app.listen(port, () => console.log(`Listening on http://localhost:${port}`));
